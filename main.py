@@ -43,22 +43,29 @@ app = FastAPI(
 # CORS
 # =========================================================
 
-# Add your deployed frontend URL in Render as FRONTEND_URL.
-# Local URLs remain available for development.
-frontend_url = os.getenv("FRONTEND_URL", "").strip().rstrip("/")
-allowed_origins = [
+# CORS
+# Always allow the deployed SmartWaste frontend, and allow FRONTEND_URL
+# to override/add the deployed origin through Render environment settings.
+# Local origins are included for development.
+frontend_url = os.getenv(
+    "FRONTEND_URL",
+    "https://smartwaste-frontend-ku11.onrender.com",
+).strip().rstrip("/")
+
+allowed_origins = {
+    "https://smartwaste-frontend-ku11.onrender.com",
     "http://localhost:5173",
     "http://127.0.0.1:5173",
-]
+}
 if frontend_url:
-    allowed_origins.append(frontend_url)
+    allowed_origins.add(frontend_url)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=allowed_origins,
-    allow_credentials=True,
+    allow_origins=sorted(allowed_origins),
+    allow_credentials=False,
     allow_methods=["*"],
-    allow_headers=["*"]
+    allow_headers=["*"],
 )
 
 
