@@ -15,8 +15,12 @@ import "leaflet/dist/leaflet.css";
 
 
 
-const API =
-  "http://127.0.0.1:8000";
+// API base URL:
+// Set VITE_API_URL in Render for production; this URL is the fallback.
+const API = (
+  import.meta.env.VITE_API_URL ||
+  "https://smartwaste-api-f46n.onrender.com"
+).replace(/\/+$/, "");
 
 
 const DEPOT = [
@@ -345,7 +349,18 @@ function App() {
       ]);
 
       if (!response.ok) {
-        throw new Error("Failed to load AI routes");
+        let detail = "";
+        try {
+          const errorData = await response.json();
+          detail = errorData.detail || errorData.message || "";
+        } catch {
+          // The server may return a non-JSON error response.
+        }
+        throw new Error(
+          detail
+            ? `AI route API error: ${detail}`
+            : `AI route API returned HTTP ${response.status}`
+        );
       }
 
       const data = await response.json();
@@ -378,7 +393,8 @@ function App() {
       console.error(err);
 
       setError(
-        "Unable to calculate AI-optimized routes. Check that the backend is running."
+        err?.message ||
+          "Unable to calculate AI-optimized routes. Check the backend and CORS settings."
       );
 
     } finally {
