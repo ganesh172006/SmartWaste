@@ -5,3 +5,4 @@ networkx
 ortools
 scikit-learn
 numpy
+python-dotenv
