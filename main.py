@@ -2,6 +2,8 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from pymongo import MongoClient
+from dotenv import load_dotenv
+import os
 from math import radians, sin, cos, sqrt, atan2, ceil
 
 from ortools.constraint_solver import (
@@ -28,6 +30,8 @@ from ai_vrp_optimizer import (
 # FASTAPI
 # =========================================================
 
+load_dotenv()
+
 app = FastAPI(
     title="SmartWaste API",
     description="AI-Driven Smart Waste Collection Route Optimization",
@@ -39,12 +43,19 @@ app = FastAPI(
 # CORS
 # =========================================================
 
+# Add your deployed frontend URL in Render as FRONTEND_URL.
+# Local URLs remain available for development.
+frontend_url = os.getenv("FRONTEND_URL", "").strip().rstrip("/")
+allowed_origins = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+]
+if frontend_url:
+    allowed_origins.append(frontend_url)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://127.0.0.1:5173"
-    ],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"]
@@ -55,15 +66,36 @@ app.add_middleware(
 # MONGODB
 # =========================================================
 
-MONGO_URL = "mongodb://localhost:27017/"
+# MongoDB connection:
+# Locally, MONGODB_URI is loaded from .env. On Render, set it in
+# Service -> Environment. Never silently fall back to localhost in production.
+MONGO_URL = os.getenv("MONGODB_URI", "").strip()
+
+# Tolerate accidental wrapping quotes or a copied "MONGODB_URI=" prefix.
+if MONGO_URL.startswith("MONGODB_URI="):
+    MONGO_URL = MONGO_URL.split("=", 1)[1].strip()
+MONGO_URL = MONGO_URL.strip().strip('"').strip("'").strip()
+
+if not MONGO_URL:
+    raise RuntimeError(
+        "MONGODB_URI is missing or empty. Set the full MongoDB Atlas URI "
+        "in your local .env file and in Render -> smartwaste-api -> Environment."
+    )
+
+if not MONGO_URL.startswith(("mongodb://", "mongodb+srv://")):
+    raise RuntimeError(
+        "Invalid MONGODB_URI format. The value must start with "
+        "mongodb:// or mongodb+srv://. Check Render -> Environment."
+    )
 
 client = MongoClient(
     MONGO_URL,
-    serverSelectionTimeoutMS=5000
+    serverSelectionTimeoutMS=10000,
+    connectTimeoutMS=10000,
+    appname="SmartWaste",
 )
 
 db = client["smart_waste"]
-
 bins_collection = db["bins"]
 
 
